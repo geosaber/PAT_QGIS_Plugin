@@ -20,20 +20,22 @@
  ***************************************************************************/
 """
 
+from future import standard_library
+standard_library.install_aliases()
 import logging
 import os
 import re
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 import pandas as pd
 import geopandas as gpd
 from shapely import wkt
 
-from PyQt4.QtCore import QVariant
-from PyQt4.QtGui import QFileDialog, QDockWidget, QMessageBox
+from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtWidgets import QFileDialog, QDockWidget, QMessageBox
 
 from qgis.utils import iface
-from qgis.core import (QgsMapLayer, QgsVectorLayer, QgsMapLayerRegistry, QgsRasterLayer,
+from qgis.core import (QgsMapLayer, QgsVectorLayer, QgsProject, QgsRasterLayer,
                        QgsFeature, QgsField, QgsProject, QgsUnitTypes)
 
 from pat import LOGGER_NAME
@@ -85,9 +87,9 @@ def build_layer_table():
     Can be used inconjuction with selecting layers to exclude from mapcomboboxes
     """
     df_layers = pd.DataFrame()
-    layermap = QgsMapLayerRegistry.instance().mapLayers()
+    layermap = QgsProject.instance().mapLayers()
     new_rows = []
-    for name, layer in layermap.iteritems():
+    for name, layer in layermap.items():
 
         if layer.type() not in [QgsMapLayer.VectorLayer, QgsMapLayer.RasterLayer]:
             continue
@@ -122,7 +124,7 @@ def build_layer_table():
 
 
 def save_as_dialog(dialog, caption, file_filter, default_name=''):
-    s, f = QFileDialog.getSaveFileNameAndFilter(
+    s, f = QFileDialog.getSaveFileName(
         dialog,
         caption,
         default_name,
@@ -168,8 +170,8 @@ def file_in_use(filename, display_msgbox=True):
 
     # also check to see if it's loaded into QGIS
     found_lyrs = []
-    layermap = QgsMapLayerRegistry.instance().mapLayers()
-    for name, layer in layermap.iteritems():
+    layermap = QgsProject.instance().mapLayers()
+    for name, layer in layermap.items():
         if layer.providerType() == 'delimitedtext':
 
             url = urlparse(layer.source())
@@ -256,7 +258,7 @@ def addLayerToQGIS(layer, group_layer_name="", atTop=True):
 
     """
 
-    QgsMapLayerRegistry.instance().addMapLayer(layer, addToLegend=False)
+    QgsProject.instance().addMapLayer(layer, addToLegend=False)
     root = QgsProject.instance().layerTreeRoot()
 
     # create group layers first:
@@ -297,13 +299,13 @@ def removeFileFromQGIS(filename):
     remove_layers = []
 
     # Loop through layers in reverse so the count/indexing of layers persists if one is removed.
-    layermap = QgsMapLayerRegistry.instance().mapLayers()
-    for name, layer in layermap.iteritems():
+    layermap = QgsProject.instance().mapLayers()
+    for name, layer in layermap.items():
         if layer.source() == filename:
             remove_layers.append(layer.id())
 
     if len(remove_layers) > 0:
-        QgsMapLayerRegistry.instance().removeMapLayers(remove_layers)
+        QgsProject.instance().removeMapLayers(remove_layers)
 
 
 def getGeometryTypeAsString(intGeomType):

@@ -19,10 +19,17 @@
  *                                                                         *
  ***************************************************************************/
 """
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
 
+standard_library.install_aliases()
 
+from builtins import next
+from builtins import str
+from builtins import object
 try:
-    import ConfigParser as configparser
+    import configparser as configparser
 except ImportError:
     import configparser
 
@@ -37,41 +44,43 @@ import webbrowser
 from functools import partial
 from pkg_resources import parse_version
 
-from PyQt4.Qt import QLabel
-from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, QTimer, QProcess, Qt
-from PyQt4.QtGui import QAction, QIcon, QMenu, QDockWidget, QToolButton, QMessageBox, QPushButton
-from qgis.core import QgsMapLayerRegistry, QgsMessageLog
+from qgis.PyQt.QtCore import QSettings, QTranslator, qVersion, QCoreApplication, QTimer, QProcess, Qt
+from qgis.PyQt.QtWidgets import QAction, QMenu, QDockWidget, QToolButton, QMessageBox, QPushButton,QLabel
+from qgis.PyQt.QtGui import QIcon
+from qgis.core import QgsProject, QgsMessageLog
 from qgis.gui import QgsMessageBar
 
-from processing.core.Processing import Processing
-from processing.tools import general
-from processing.gui.CommanderWindow import CommanderWindow
+# from processing.core.Processing import Processing
+# from processing.tools import general
+#from processing.gui.CommanderWindow import CommanderWindow
 
 from . import PLUGIN_DIR, PLUGIN_NAME, PLUGIN_SHORT, LOGGER_NAME, TEMPDIR
-from gui.about_dialog import AboutDialog
-from gui.blockGrid_dialog import BlockGridDialog
-from gui.calcImageIndices_dialog import CalculateImageIndicesDialog
-from gui.cleanTrimPoints_dialog import CleanTrimPointsDialog
-from gui.gridExtract_dialog import GridExtractDialog
-from gui.kMeansCluster_dialog import KMeansClusterDialog
-from gui.persistor_dialog import PersistorDialog
-from gui.pointTrailToPolygon_dialog import PointTrailToPolygonDialog
-from gui.postVesper_dialog import PostVesperDialog
-from gui.preVesper_dialog import PreVesperDialog
-from gui.randomPixelSelection_dialog import RandomPixelSelectionDialog
-from gui.rasterSymbology_dialog import RasterSymbologyDialog
-from gui.resampleImageToBlock_dialog import ResampleImageToBlockDialog
-from gui.rescaleNormalise_dialog import RescaleNormaliseDialog
-from gui.stripTrialPoints_dialog import StripTrialPointsDialog
-from gui.settings_dialog import SettingsDialog
-from gui.tTestAnalysis_dialog import tTestAnalysisDialog
+from .gui.about_dialog import AboutDialog
+from .gui.settings_dialog import SettingsDialog
 
-from util.check_dependencies import check_vesper_dependency, check_R_dependency
-from util.custom_logging import stop_logging
-from util.qgis_common import addRasterFileToQGIS, removeFileFromQGIS
-from util.settings import read_setting, write_setting
-from util.processing_alg_logging import ProcessingAlgMessages
-from util.qgis_symbology import raster_apply_unique_value_renderer, RASTER_SYMBOLOGY, \
+# from .gui.blockGrid_dialog import BlockGridDialog
+# from .gui.calcImageIndices_dialog import CalculateImageIndicesDialog
+# from .gui.cleanTrimPoints_dialog import CleanTrimPointsDialog
+# from .gui.gridExtract_dialog import GridExtractDialog
+# from .gui.kMeansCluster_dialog import KMeansClusterDialog
+# from .gui.persistor_dialog import PersistorDialog
+# from .gui.pointTrailToPolygon_dialog import PointTrailToPolygonDialog
+# from .gui.postVesper_dialog import PostVesperDialog
+# from .gui.preVesper_dialog import PreVesperDialog
+# from .gui.randomPixelSelection_dialog import RandomPixelSelectionDialog
+# from .gui.rasterSymbology_dialog import RasterSymbologyDialog
+# from .gui.resampleImageToBlock_dialog import ResampleImageToBlockDialog
+# from .gui.rescaleNormalise_dialog import RescaleNormaliseDialog
+# from .gui.stripTrialPoints_dialog import StripTrialPointsDialog
+
+# from .gui.tTestAnalysis_dialog import tTestAnalysisDialog
+
+from .util.check_dependencies import check_vesper_dependency, check_R_dependency
+from .util.custom_logging import stop_logging
+from .util.qgis_common import addRasterFileToQGIS, removeFileFromQGIS
+from .util.settings import read_setting, write_setting
+from .util.processing_alg_logging import ProcessingAlgMessages
+from .util.qgis_symbology import raster_apply_unique_value_renderer, RASTER_SYMBOLOGY, \
     raster_apply_classified_renderer
 
 import pyprecag
@@ -82,7 +91,7 @@ LOGGER = logging.getLogger(LOGGER_NAME)
 LOGGER.addHandler(logging.NullHandler())  # logging.StreamHandler()
 
 
-class pat_toolbar:
+class pat_toolbar(object):
     """QGIS Plugin Implementation."""
 
     def __init__(self, iface):
@@ -412,45 +421,47 @@ class pat_toolbar:
         LOGGER.debug(sys.path)
 
     def unload(self):
+        
         """Removes the plugin menu/toolbar item and icon from QGIS GUI and clean up temp folder"""
-
+        
         if len(self.vesper_queue) > 0:
             replyQuit = QMessageBox.information(self.iface.mainWindow(),
                                                 "Quit QGIS", "Quitting QGIS with {} tasks in the "
                                                 "VESPER queue.\n\t{}".format(len(self.vesper_queue),
                                                 '\n\t'.join([ea['control_file'] for ea in self.vesper_queue])),
                                                 QMessageBox.Ok)
-
+        
         stop_logging('pyprecag')
-
-        layermap = QgsMapLayerRegistry.instance().mapLayers()
-        RemoveLayers = []
-        for name, layer in layermap.iteritems():
-            if TEMPDIR in layer.source():
-                RemoveLayers.append(layer.id())
-
-        if len(RemoveLayers) > 0:
-            QgsMapLayerRegistry.instance().removeMapLayers(RemoveLayers)
-
-        # remove the PrecisionAg Temp Folder.
+        
+#         layermap = QgsProject.instance().mapLayers()
+#         RemoveLayers = []
+#         for name, layer in layermap.items():
+#             if TEMPDIR in layer.source():
+#                 RemoveLayers.append(layer.id())
+#         
+#         if len(RemoveLayers) > 0:
+#             QgsProject.instance().removeMapLayers(RemoveLayers)
+#         
+        """ remove the PrecisionAg Temp Folder."""
         try:
             if not self.DEBUG and os.path.exists(TEMPDIR):
                 shutil.rmtree(TEMPDIR)
-
+        
         except Exception as err:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             mess = str(traceback.format_exc())
             print(mess)
 
+       
         self.menuPrecAg.clear()
         for action in self.actions:
             self.iface.removePluginMenu(u'{}Menu'.format(PLUGIN_SHORT), action)
             self.iface.removeToolBarIcon(action)
-
-        # remove the toolbar
+        
+        # # remove the toolbar
         del self.toolbar
-        del self.menuPrecAg
-        self.clear_modules()
+        self.menuPrecAg.deleteLater()
+        #self.clear_modules()
 
     def queueAddTo(self, vesp_dict):
         """ Add a control file to the VESPER queue"""
@@ -605,7 +616,7 @@ class pat_toolbar:
 
         else:
             message = "Error occurred with VESPER kriging for {}".format(currentTask['control_file'])
-            self.iface.messageBar().pushMessage(message, level=QgsMessageBar.CRITICAL, duration=0)
+            self.iface.messageBar().pushMessage(message, level=Qgis.Critical, duration=0)
             LOGGER.error(message)
 
         self.vesper_queue = self.vesper_queue[1:]  # remove the recently finished one which will always be at position 0
@@ -665,7 +676,7 @@ class pat_toolbar:
         alg = Processing.getAlgorithm("r:wholeofblockanalysis")
         if alg is None:
             self.iface.messageBar().pushMessage("Whole-of-block analysis algorithm could not"
-                                                " be found", level=QgsMessageBar.CRITICAL)
+                                                " be found", level=Qgis.Critical)
             return
         # Instantiate the commander window and open the algorithm's interface
         cw = CommanderWindow(self.iface.mainWindow(), self.iface.mapCanvas())
@@ -676,12 +687,12 @@ class pat_toolbar:
 
         if proc_alg_mess.error:
             self.iface.messageBar().pushMessage("Whole-of-block analysis", proc_alg_mess.error_msg,
-                                                level=QgsMessageBar.CRITICAL, duration=0)
+                                                level=Qgis.Critical, duration=0)
         elif proc_alg_mess.alg_name != '':
             data_column = proc_alg_mess.parameters['Data_Column']
 
             # load rasters into qgis as grouped layers.
-            for key, val in proc_alg_mess.output_files.items():
+            for key, val in list(proc_alg_mess.output_files.items()):
 
                 grplyr = os.path.join('Whole-of-block {}'.format(data_column),  val['title'])
 
@@ -739,7 +750,7 @@ class pat_toolbar:
             output_folder = dlg_tTestAnalysis.lneOutputFolder.text()
             import webbrowser
             try:
-                from urllib import pathname2url         # Python 2.x
+                from urllib.request import pathname2url         # Python 2.x
             except:
                 from urllib.request import pathname2url # Python 3.x
 
@@ -836,7 +847,7 @@ class pat_toolbar:
 
             import webbrowser
             try:
-                from urllib import pathname2url  # Python 2.x
+                from urllib.request import pathname2url  # Python 2.x
             except:
                 from urllib.request import pathname2url  # Python 3.x
 
@@ -951,7 +962,7 @@ class pat_toolbar:
             output_folder = os.path.dirname(dlgCleanTrimPoints.lneSaveCSVFile.text())
             import webbrowser
             try:
-                from urllib import pathname2url  # Python 2.x
+                from urllib.request import pathname2url  # Python 2.x
             except:
                 from urllib.request import pathname2url  # Python 3.x
 
